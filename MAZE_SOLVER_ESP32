@@ -1,0 +1,153 @@
+// =====================================================
+// ESP32 + L298N + 3 HC-SR04 Maze Solver
+// =====================================================
+
+// === Motor control pins ===
+#define ENA 5
+#define IN1 23
+#define IN2 22
+#define IN3 19
+#define IN4 18
+#define ENB 4
+
+// === Ultrasonic sensor pins ===
+#define TRIG_FRONT 27
+#define ECHO_FRONT 14
+
+#define TRIG_LEFT 12
+#define ECHO_LEFT 13
+
+#define TRIG_RIGHT 25
+#define ECHO_RIGHT 26
+
+long frontDist, leftDist, rightDist;
+
+void setup() {
+  Serial.begin(115200);
+
+  // Motor pins
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  // Enable motors (full speed)
+  digitalWrite(ENA, HIGH);
+  digitalWrite(ENB, HIGH);
+
+  // Ultrasonic pins
+  pinMode(TRIG_FRONT, OUTPUT);
+  pinMode(ECHO_FRONT, INPUT);
+
+  pinMode(TRIG_LEFT, OUTPUT);
+  pinMode(ECHO_LEFT, INPUT);
+
+  pinMode(TRIG_RIGHT, OUTPUT);
+  pinMode(ECHO_RIGHT, INPUT);
+
+  stopMotors();
+}
+
+void loop() {
+
+  // Read distances
+  frontDist = readSonar(TRIG_FRONT, ECHO_FRONT);
+  leftDist  = readSonar(TRIG_LEFT, ECHO_LEFT);
+  rightDist = readSonar(TRIG_RIGHT, ECHO_RIGHT);
+
+  // Print distances
+  Serial.print("Front: ");
+  Serial.print(frontDist);
+  Serial.print(" cm\t");
+
+  Serial.print("Left: ");
+  Serial.print(leftDist);
+  Serial.print(" cm\t");
+
+  Serial.print("Right: ");
+  Serial.print(rightDist);
+  Serial.println(" cm");
+
+  // Decision logic
+  if (frontDist > 35) {
+    forward();
+  }
+  else if (rightDist > 35) {
+    rotateRight();
+    delay(250);
+  }
+  else if (leftDist > 35) {
+    rotateLeft();
+    delay(250);
+  }
+  else {
+    // Dead end
+    rotateRight();
+    delay(750);
+  }
+
+  delay(200);
+}
+
+// =====================================================
+// Movement Functions
+// =====================================================
+
+void forward() {
+  setMotors(HIGH, LOW, HIGH, LOW);
+}
+
+void backward() {
+  setMotors(LOW, HIGH, LOW, HIGH);
+}
+
+void rotateLeft() {
+  setMotors(LOW, HIGH, HIGH, LOW);
+}
+
+void rotateRight() {
+  setMotors(HIGH, LOW, LOW, HIGH);
+}
+
+void stopMotors() {
+  setMotors(LOW, LOW, LOW, LOW);
+}
+
+// =====================================================
+// Motor Helper
+// =====================================================
+
+void setMotors(bool in1, bool in2, bool in3, bool in4) {
+  digitalWrite(IN1, in1);
+  digitalWrite(IN2, in2);
+  digitalWrite(IN3, in3);
+  digitalWrite(IN4, in4);
+}
+
+// =====================================================
+// Ultrasonic Reading
+// =====================================================
+
+long readSonar(int trigPin, int echoPin) {
+
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+
+  digitalWrite(trigPin, LOW);
+
+  long duration = pulseIn(echoPin, HIGH, 35000);
+
+  if (duration == 0) {
+    return 400; // No echo detected
+  }
+
+  long distance = duration * 0.034 / 2;
+
+  return distance;
+}
